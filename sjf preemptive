@@ -1,0 +1,64 @@
+ 
+SHORTEST Job first( preemptive)
+ 
+#include <stdio.h>
+#include <limits.h>
+ 
+int main() {
+   int n;
+   printf("Enter number of processes: ");
+   scanf("%d", &n);
+ 
+   int at[n], bt[n], rt[n], wt[n], tat[n], ct[n];
+   int completed = 0, t = 0, shortest;
+   float total_wt = 0, total_tat = 0;
+ 
+   for (int i = 0; i < n; i++) {
+       printf("Enter Arrival Time of P%d: ", i + 1);
+       scanf("%d", &at[i]);
+       printf("Enter Burst Time of P%d: ", i + 1);
+       scanf("%d", &bt[i]);
+       rt[i] = bt[i]; // remaining time initially = burst time
+   }
+ 
+   while (completed != n) {
+       shortest = -1;
+       int min_rt = INT_MAX;
+ 
+       // Find process with shortest remaining time at current time t
+       for (int i = 0; i < n; i++) {
+           if (at[i] <= t && rt[i] > 0 && rt[i] < min_rt) {
+               min_rt = rt[i];
+               shortest = i;
+           }
+       }
+ 
+       if (shortest == -1) {
+           t++; // No process available at time t, move to next time
+           continue;
+       }
+ 
+       rt[shortest]--; // execute for 1 unit of time
+       t++;
+ 
+       if (rt[shortest] == 0) { // process completed
+           completed++;
+           ct[shortest] = t; // completion time
+           tat[shortest] = ct[shortest] - at[shortest]; // turnaround time
+           wt[shortest] = tat[shortest] - bt[shortest]; // waiting time
+ 
+           total_wt += wt[shortest];
+           total_tat += tat[shortest];
+       }
+   }
+ 
+   printf("\nProcess\tAT\tBT\tCT\tTAT\tWT\n");
+   for (int i = 0; i < n; i++) {
+       printf("P%d\t%d\t%d\t%d\t%d\t%d\n", i + 1, at[i], bt[i], ct[i], tat[i], wt[i]);
+   }
+ 
+   printf("\nAverage Turnaround Time = %.2f", total_tat / n);
+   printf("\nAverage Waiting Time = %.2f\n", total_wt / n);
+ 
+   return 0;
+}
