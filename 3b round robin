@@ -87,3 +87,84 @@ P3	5	19	19	14
 
 Average Turnaround Time: 19.33
 Average Waiting Time: 12.33
+
+________________________________________________________________
+
+#include <stdio.h>   // for printf() and scanf()
+
+int main() {
+    int n, i, tq, time = 0, count = 0;
+    int bt[10], rt[10], ct[10], wt[10], tat[10]; 
+    // bt = burst time, rt = remaining time, 
+    // ct = completion time, wt = waiting time, tat = turnaround time
+
+    float total_wt = 0, total_tat = 0;  // to calculate averages later
+
+    // Step 1: take number of processes
+    printf("Enter number of processes (max 10): ");
+    scanf("%d", &n);
+
+    // Step 2: take burst time (CPU time required) for each process
+    printf("Enter burst time for each process:\n");
+    for (i = 0; i < n; i++) {
+        printf("Process %d: ", i + 1);
+        scanf("%d", &bt[i]);   // store burst time
+        rt[i] = bt[i];         // initialize remaining time = burst time
+    }
+
+    // Step 3: take time quantum (the fixed time slice each process gets)
+    printf("Enter time quantum: ");
+    scanf("%d", &tq);
+
+    // Step 4: simulate Round Robin scheduling
+    // this loop continues until all processes finish
+    while (1) {
+        int done = 1;   // assume all are done; set to 0 if any process still has time left
+
+        // loop through each process in order
+        for (i = 0; i < n; i++) {
+            if (rt[i] > 0) {     // if this process still has some time left
+                done = 0;        // not done yet, so keep looping
+
+                if (rt[i] > tq) {  // if remaining time is greater than time quantum
+                    // process runs only for time quantum
+                    time += tq;        // increase total CPU time
+                    rt[i] -= tq;       // reduce remaining time
+                    printf("Process %d executed for %d units. Time = %d\n",
+                           i + 1, tq, time);
+                } else {
+                    // remaining time is less than or equal to quantum → process finishes
+                    time += rt[i];     // add the remaining time to total time
+                    printf("Process %d executed for %d units. Time = %d (Completed)\n",
+                           i + 1, rt[i], time);
+                    rt[i] = 0;         // remaining time becomes 0
+                    ct[i] = time;      // completion time recorded
+
+                    // since all processes arrived at time 0:
+                    tat[i] = ct[i];             // Turnaround Time = CT - AT = CT
+                    wt[i] = tat[i] - bt[i];     // Waiting Time = TAT - BT
+                    total_wt += wt[i];          // accumulate totals
+                    total_tat += tat[i];
+                    count++;                    // count how many finished
+                }
+            }
+        }
+
+        // if all processes are done (done == 1), exit the loop
+        if (done == 1)
+            break;
+    }
+
+    // Step 5: print the results
+    printf("\nP#\tBT\tCT\tTAT\tWT\n");
+    for (i = 0; i < n; i++) {
+        printf("P%d\t%d\t%d\t%d\t%d\n",
+               i + 1, bt[i], ct[i], tat[i], wt[i]);
+    }
+
+    // Step 6: print average turnaround time and waiting time
+    printf("\nAverage Turnaround Time: %.2f\n", total_tat / n);
+    printf("Average Waiting Time: %.2f\n", total_wt / n);
+
+    return 0;
+}
