@@ -1,0 +1,162 @@
+SHORTEST JOB FIRST(PREEMPTIVE)
+
+#include <stdio.h>
+#include <limits.h>
+
+int main() {
+    int n, i, time = 0, completed = 0;
+    float total_wait = 0, total_turnaround = 0;
+
+    printf("Enter number of processes: ");
+    scanf("%d", &n);
+
+    int arrival[n], burst[n], remaining[n], waiting[n], turnaround[n];
+
+    for (i = 0; i < n; i++) {
+        printf("Enter arrival time and burst time for process %d: ", i + 1);
+        scanf("%d %d", &arrival[i], &burst[i]);
+        remaining[i] = burst[i];
+    }
+
+    while (completed != n) {
+        int shortest = -1;
+        int min_remaining = INT_MAX;
+
+        for (i = 0; i < n; i++) {
+            if (arrival[i] <= time && remaining[i] > 0 && remaining[i] < min_remaining) {
+                min_remaining = remaining[i];
+                shortest = i;
+            }
+        }
+
+        if (shortest == -1) {
+            time++; // No process is ready, CPU is idle
+            continue;
+        }
+  remaining[shortest]--;
+        time++;
+
+        if (remaining[shortest] == 0) {
+            completed++;
+            int finish_time = time;
+            turnaround[shortest] = finish_time - arrival[shortest];
+            waiting[shortest] = turnaround[shortest] - burst[shortest];
+
+            total_wait += waiting[shortest];
+            total_turnaround += turnaround[shortest];
+        }
+    }
+
+    printf("\nProcess\tArrival\tBurst\tWaiting\tTurnaround\n");
+    for (i = 0; i < n; i++) {
+        printf("P%d\t%d\t%d\t%d\t%d\n", i + 1, arrival[i], burst[i], waiting[i], turnaround[i]);
+    }
+
+    printf("\nAverage Waiting Time = %.2f", total_wait / n);
+    printf("\nAverage Turnaround Time = %.2f\n", total_turnaround / n);
+
+    return 0;
+}
+
+OUTPUT:
+
+network@network-OEM:~$ nano p3.c
+network@network-OEM:~$ gcc p3.c -o p3
+network@network-OEM:~$ ./p3
+Enter number of processes: 4
+Enter arrival time and burst time for process 1: 10
+6
+Enter arrival time and burst time for process 2: 8
+4
+Enter arrival time and burst time for process 3: 5
+2
+Enter arrival time and burst time for process 4: 3
+1
+
+Process	Arrival	Burst	Waiting	Turnaround
+P1	10	6	2	8
+P2	8	4	0	4
+P3	5	2	0	2
+P4	3	1	0	1
+
+Average Waiting Time = 0.50
+Average Turnaround Time = 3.75
+
+_______________________________________________________________________________________________________
+
+#include <stdio.h>
+#include <limits.h> // for INT_MAX (used to find the minimum remaining time)
+
+// MAIN FUNCTION
+int main() {
+    int n, i, time = 0, completed = 0;
+    float total_wait = 0, total_turnaround = 0;
+
+    // Take total number of processes from user
+    printf("Enter number of processes: ");
+    scanf("%d", &n);
+
+    // Declare arrays for process info
+    int arrival[n], burst[n], remaining[n], waiting[n], turnaround[n];
+
+    // Input arrival and burst times for each process
+    for (i = 0; i < n; i++) {
+        printf("Enter arrival time and burst time for process %d: ", i + 1);
+        scanf("%d %d", &arrival[i], &burst[i]);
+        remaining[i] = burst[i]; // Initially, remaining time = total burst time
+    }
+
+    // SIMULATION LOOP: continue until all processes are completed
+    while (completed != n) {
+        int shortest = -1;           // stores index of process with shortest remaining time
+        int min_remaining = INT_MAX; // used to find minimum remaining time among ready processes
+
+        // Check all processes to find the currently available shortest one
+        for (i = 0; i < n; i++) {
+            // Process is ready if it has arrived and still has remaining time
+            if (arrival[i] <= time && remaining[i] > 0 && remaining[i] < min_remaining) {
+                min_remaining = remaining[i];
+                shortest = i;
+            }
+        }
+
+        // If no process is ready at current time, CPU stays idle for 1 unit
+        if (shortest == -1) {
+            time++;
+            continue;
+        }
+
+        // Execute the process with the shortest remaining time for 1 time unit (preemptive step)
+        remaining[shortest]--;
+        time++;
+
+        // If the process has finished execution
+        if (remaining[shortest] == 0) {
+            completed++; // increment count of completed processes
+
+            int finish_time = time; // record the time when process completed
+
+            // Calculate Turnaround Time = Finish Time - Arrival Time
+            turnaround[shortest] = finish_time - arrival[shortest];
+
+            // Calculate Waiting Time = Turnaround Time - Burst Time
+            waiting[shortest] = turnaround[shortest] - burst[shortest];
+
+            // Add to totals for later average calculation
+            total_wait += waiting[shortest];
+            total_turnaround += turnaround[shortest];
+        }
+    }
+
+    // DISPLAY RESULTS
+    printf("\nProcess\tArrival\tBurst\tWaiting\tTurnaround\n");
+    for (i = 0; i < n; i++) {
+        printf("P%d\t%d\t%d\t%d\t%d\n", i + 1, arrival[i], burst[i], waiting[i], turnaround[i]);
+    }
+
+    // Display averages
+    printf("\nAverage Waiting Time = %.2f", total_wait / n);
+    printf("\nAverage Turnaround Time = %.2f\n", total_turnaround / n);
+
+    return 0;
+}
