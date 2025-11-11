@@ -80,4 +80,165 @@ if( pid < 0) {
        printf(" [Parent] Child has finished. \n");
       }
        return 0;
- }i
+ }
+
+____________________________________________________________________________________
+
+/*
+ Practical Assignment:
+ - Parent reads integers.
+ - Parent sorts using Bubble Sort.
+ - Child sorts using Insertion Sort.
+ - Demonstrates: normal parent-child (with wait), zombie, and orphan.
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+/* Bubble Sort (used by parent) */
+void bubbleSort(int arr[], int n) {
+    for (int i = 0; i < n - 1; i++)
+        for (int j = 0; j < n - i - 1; j++)
+            if (arr[j] > arr[j + 1]) {
+                int temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+}
+
+/* Insertion Sort (used by child) */
+void insertionSort(int arr[], int n) {
+    for (int i = 1; i < n; i++) {
+        int key = arr[i];
+        int j = i - 1;
+        /* shift elements greater than key to one position ahead */
+        while (j >= 0 && arr[j] > key) {
+            arr[j + 1] = arr[j];
+            j--;               /* decrement j (corrected) */
+        }
+        arr[j + 1] = key;
+    }
+}
+
+/* Print array with spaces for readability */
+void printArray(int arr[], int n) {
+    for (int i = 0; i < n; i++)
+        printf("%d ", arr[i]);
+    printf("\n");
+}
+
+int main() {
+    int n;
+
+    printf("Enter no. of elements: ");
+    if (scanf("%d", &n) != 1 || n <= 0) {
+        fprintf(stderr, "Invalid number of elements.\n");
+        return 1;
+    }
+
+    /* NOTE: VLA used. For large n consider malloc to avoid stack overflows. */
+    int arr[n];
+    printf("Enter %d integers:\n", n);
+    for (int i = 0; i < n; i++)
+        scanf("%d", &arr[i]);
+
+    /* Make a copy for child so both see the same unsorted input */
+    int child_arr[n];
+    for (int i = 0; i < n; i++) child_arr[i] = arr[i];
+
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        perror("Fork failed");
+        return 1;
+    } else if (pid == 0) {
+        /* Child process: do insertion sort and exit */
+        printf("\n[Child-Sort] Child PID = %d\n", getpid());
+        printf("[Child-Sort] Parent PID = %d\n", getppid());
+        insertionSort(child_arr, n);
+        printf("[Child-Sort] Sorted array using Insertion Sort:\n");
+        printArray(child_arr, n);
+        printf("[Child-Sort] Exiting.\n");
+        exit(0);
+    } else {
+        /* Parent process: do bubble sort, then wait for child */
+        printf("\n[Parent-Sort] Parent PID = %d\n", getpid());
+        bubbleSort(arr, n);
+        printf("[Parent-Sort] Sorted array using Bubble Sort:\n");
+        printArray(arr, n);
+
+        /* Wait for the sorting child to finish and be reaped */
+        int status;
+        wait(&status);
+        printf("[Parent-Sort] Child sorting process has finished and was reaped.\n\n");
+    }
+
+    /* -------------------------
+       Demonstrate ZOMBIE state
+       -------------------------
+       Create a short-lived child that exits immediately.
+       Parent sleeps for a while before wait() so child becomes a zombie
+       (visible as 'Z' in ps output) until the parent calls wait().
+    */
+
+    pid_t zpid = fork();
+    if (zpid < 0) {
+        perror("fork failed");
+        return 1;
+    } else if (zpid == 0) {
+        /* This child exits immediately -> will become ZOMBIE briefly */
+        printf("[Zombie-Demo] Child (will exit immediately) PID=%d, PPID=%d\n",
+               getpid(), getppid());
+        _exit(0); /* use _exit to exit child immediately */
+    } else {
+        /* Parent sleeps to allow you to observe the zombie (run `ps -l`) */
+        printf("[Zombie-Demo] Parent PID=%d: sleeping 6s so child may become ZOMBIE.\n", getpid());
+        printf("  (Open another terminal and run: ps -l | grep %d )\n", (int)zpid);
+        sleep(6);
+
+        /* Now reap the short-lived child */
+        waitpid(zpid, NULL, 0);
+        printf("[Zombie-Demo] Parent reaped the short-lived child. No more zombie.\n\n");
+    }
+
+    /* -------------------------
+       Demonstrate ORPHAN state
+       -------------------------
+       Create a child that sleeps longer while parent exits immediately.
+       The child will be adopted by init/systemd (PPID becomes 1 or system init pid).
+    */
+
+    pid_t opid = fork();
+    if (opid < 0) {
+        perror("fork failed");
+        return 1;
+    } else if (opid == 0) {
+        /* Child: sleep a bit and then show its PPID (should be 1 or systemd after parent exits) */
+        sleep(3); /* ensure parent has exited */
+        printf("[Orphan-Demo] Child PID=%d now running; its PPID=%d (should be 1 or systemd PID)\n",
+               getpid(), getppid());
+        printf("[Orphan-Demo] Child exiting now.\n");
+        _exit(0);
+    } else {
+        /* Parent exits immediately without waiting -> child becomes orphan */
+        printf("[Orphan-Demo] Parent PID=%d exiting immediately, leaving child %d orphaned.\n",
+               getpid(), (int)opid);
+        /* Note: do NOT wait here. Parent exits so child becomes orphan. */
+        exit(0);
+    }
+
+    /* unreachable */
+    return 0;
+}
+
+# compile
+gcc parent_child_demo.c -o parent_child_demo
+
+# make executable (not strictly necessary for ./ since gcc created it executable)
+chmod +x parent_child_demo
+
+# run
+./parent_child_demo
+
