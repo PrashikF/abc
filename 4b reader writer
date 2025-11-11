@@ -1,0 +1,178 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+ 
+int readcount = 0;
+pthread_mutex_t mutex;
+sem_t wrt;
+void* reader(void* arg) {
+ 
+   int id = *(int*)arg;
+ 
+   pthread_mutex_lock(&mutex);
+ readcount++;
+ 
+   if (readcount == 1) {
+ 
+       sem_wait(&wrt);
+   }
+   pthread_mutex_unlock(&mutex);
+ 
+  printf("Reader %d is reading\n", id);
+   sleep(1);
+   printf("Reader %d finished reading\n", id);
+ 
+   pthread_mutex_lock(&mutex);
+   readcount--;
+   if (readcount == 0) {
+ 
+       sem_post(&wrt);
+   }
+   pthread_mutex_unlock(&mutex);
+   return NULL;
+}
+void* writer(void* arg) {
+   int id = *(int*)arg;
+   sem_wait(&wrt);
+ 
+   printf("Writer %d is writing\n", id);
+   sleep(2);
+   printf("Writer %d finished writing\n", id);
+  sem_post(&wrt);
+   return NULL;
+}
+int main() {
+   pthread_t r[5], w[2];
+   int reader_ids[5] = {1, 2, 3, 4, 5};
+ 
+int writer_ids[2] = {1, 2};
+   pthread_mutex_init(&mutex, NULL);
+   sem_init(&wrt, 0, 1);
+ 
+   for (int i = 0; i < 5; i++) {
+       pthread_create(&r[i], NULL, reader, &reader_ids[i]);
+   }
+ 
+   for (int i = 0; i < 2; i++) {
+       pthread_create(&w[i], NULL, writer, &writer_ids[i]);
+   }
+ 
+   for (int i = 0; i < 5; i++) {
+       pthread_join(r[i], NULL);
+}
+ 
+   for (int i = 0; i < 2; i++) {
+       pthread_join(w[i], NULL);
+   }
+   pthread_mutex_destroy(&mutex);
+   sem_destroy(&wrt);
+   return 0;
+}
+
+__________________________________________________________________________________________________
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+
+/*
+ * Readers–Writers (Readers-priority) example:
+ * - Multiple readers can read simultaneously.
+ * - Writers get exclusive access.
+ * - Readers increment `readcount`; the first reader locks writers by waiting on `wrt`.
+ * - When the last reader leaves, it posts `wrt` to allow writers.
+ *
+ * Synchronization primitives:
+ * - mutex (pthread_mutex_t) protects readcount updates.
+ * - wrt (sem_t) is a semaphore that gives exclusive access to writers.
+ */
+
+int readcount = 0;            // number of active readers
+pthread_mutex_t mutex;        // protects readcount
+sem_t wrt;                    // writer semaphore (allows exclusive writer access)
+
+// Reader thread function
+void* reader(void* arg) {
+    int id = *(int*)arg;
+
+    // Entry section for reader: update readcount under mutex
+    pthread_mutex_lock(&mutex);
+    readcount++;
+    // If this is the first reader, block writers by waiting on wrt
+    if (readcount == 1) {
+        sem_wait(&wrt); // first reader locks writers out
+    }
+    pthread_mutex_unlock(&mutex);
+
+    // Critical section: reading (simulated by sleep)
+    printf("Reader %d is reading\n", id);
+    sleep(1); // simulate read time
+    printf("Reader %d finished reading\n", id);
+
+    // Exit section for reader: decrement readcount under mutex
+    pthread_mutex_lock(&mutex);
+    readcount--;
+    // If this was the last reader, allow writers to proceed
+    if (readcount == 0) {
+        sem_post(&wrt); // last reader releases writer lock
+    }
+    pthread_mutex_unlock(&mutex);
+
+    return NULL;
+}
+
+// Writer thread function
+void* writer(void* arg) {
+    int id = *(int*)arg;
+
+    // Writers request exclusive access
+    sem_wait(&wrt); // wait for writers lock (also blocks if readers active)
+
+    // Critical section: writing (simulated by sleep)
+    printf("Writer %d is writing\n", id);
+    sleep(2); // simulate write time
+    printf("Writer %d finished writing\n", id);
+
+    // Release exclusive access
+    sem_post(&wrt);
+    return NULL;
+}
+
+int main() {
+    pthread_t r[5], w[2];
+    int reader_ids[5] = {1, 2, 3, 4, 5};
+    int writer_ids[2] = {1, 2};
+
+    // Initialize mutex and semaphore
+    pthread_mutex_init(&mutex, NULL);
+    sem_init(&wrt, 0, 1); // initial value 1 -> writers allowed when no readers
+
+    // Create reader threads
+    for (int i = 0; i < 5; i++) {
+        pthread_create(&r[i], NULL, reader, &reader_ids[i]);
+    }
+
+    // Create writer threads
+    for (int i = 0; i < 2; i++) {
+        pthread_create(&w[i], NULL, writer, &writer_ids[i]);
+    }
+
+    // Wait for readers to finish
+    for (int i = 0; i < 5; i++) {
+        pthread_join(r[i], NULL);
+    }
+
+    // Wait for writers to finish
+    for (int i = 0; i < 2; i++) {
+        pthread_join(w[i], NULL);
+    }
+
+    // Cleanup
+    pthread_mutex_destroy(&mutex);
+    sem_destroy(&wrt);
+    return 0;
+}
