@@ -1,0 +1,103 @@
+PRACTICAL ASSIGNMENT NO. 2.B
+
+PARENT.C
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+void bubbleSort(int arr[], int n) {
+    for (int i = 0; i < n - 1; i++)
+        for (int j = 0; j < n - i - 1; j++)
+                int temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+}
+
+int main() {
+    int n;
+    printf("Enter number of elements: ");
+    scanf("%d", &n);
+
+    int arr[n];
+    printf("Enter %d elements:\n", n);
+    for (int i = 0; i < n; i++)
+        scanf("%d", &arr[i]);
+
+    // Sort array
+    bubbleSort(arr, n);
+
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        perror("Fork failed");
+        exit(1);
+    } else if (pid == 0) {
+/ Child Process
+        char *args[n + 2]; // program name + n elements + NULL
+        args[0] = "./child";
+
+        for (int i = 0; i < n; i++) {
+            char *str = malloc(10);
+            sprintf(str, "%d", arr[i]);
+            args[i + 1] = str;
+        }
+
+        args[n + 1] = NULL;
+
+        // Execute child program with sorted array
+        execve("./child", args, NULL);    //t's often used after a fork() call in child processes to launch new programs.
+
+        perror("execve failed");
+        exit(1);
+    } else {
+        // Parent Process waits
+        wait(NULL);
+    }
+
+    return 0;
+}
+__________________________________________________________________________________________________________________________
+
+CHILD.C
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char *argv[]) {
+    printf("\nChild Process: Array in Reverse Order:\n");
+
+    for (int i = argc - 1; i >= 1; i--) {
+        printf("%s ", argv[i]);
+    }
+
+    printf("\n");
+    return 0;
+}
+
+
+
+//argc-  the number of command-line arguments passed to the program.
+//argv- n array of C strings representing each command-line argument.
+
+
+-----------------------------------OUTPUT--------------------------------------------------------
+etwork@network-OEM:~$ nano parent.c
+network@network-OEM:~$ nano child.c
+network@network-OEM:~$ gcc parent.c -o parent
+network@network-OEM:~$ ./parent
+Enter number of elements: 5
+Enter 5 elements:
+2
+
+0
+4
+5
+6
+
+Child Process: Array in Reverse Order:
+6 5 4 2 0 
+
+_______________________________________________________________________________________________
